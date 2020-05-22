@@ -13,6 +13,9 @@ RET = 0b00010001
 SP = 7
 ADD = 0b10100000
 CMP = 0b10100111
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 
 
 class CPU:
@@ -25,7 +28,8 @@ class CPU:
         self.reg = [0] * 8
         self.reg[SP] = SP_MEM
         self.instruction = {LDI: self.ldi, PRN: self.prn, MUL: self.mul, HLT: self.hlt, POP: self.pop, PUSH: self.push,
-                            CALL: self.call, RET: self.ret, ADD: self.add}
+                            CALL: self.call, RET: self.ret, ADD: self.add, CMP: self.cmp, JMP: self.jmp}
+        self.flag = 0b0000000
 
     def load(self):
         """Load a program into memory."""
@@ -60,6 +64,14 @@ class CPU:
             self.reg[reg_a] += self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] = self.reg[reg_a] * self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.flag = bin(1)
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.flag = bin(1 << 2)
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.flag = bin(1 << 1)
+
         # elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -127,6 +139,27 @@ class CPU:
         return_addr = self.ram_read(self.reg[SP])
         self.reg[SP] += 1
         self.pc = return_addr
+
+    def cmp(self):
+        self.alu('CMP', self.reg[self.pc + 1], self.reg[self.pc + 2])
+        self.pc = self.get_arg_count(CMP)
+
+    def jmp(self):
+        self.pc = self.reg[self.pc + 1]
+
+    def jeq(self):
+        value = self.flag & 0b00000001
+        if value == 0b00000001:
+            self.pc = self.reg[self.pc + 1]
+        else:
+            self.pc = self.get_arg_count(JEQ) + 1
+
+    def jne(self):
+        value = self.flag & 0b00000001
+        if value == 0b00000000:
+            self.pc = self.reg[self.pc + 1]
+        else:
+            self.pc = self.get_arg_count(JNE) + 1
 
     def push(self):
         self.reg[SP] -= 1
