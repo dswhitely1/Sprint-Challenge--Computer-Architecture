@@ -28,7 +28,7 @@ class CPU:
         self.reg = [0] * 8
         self.reg[SP] = SP_MEM
         self.instruction = {LDI: self.ldi, PRN: self.prn, MUL: self.mul, HLT: self.hlt, POP: self.pop, PUSH: self.push,
-                            CALL: self.call, RET: self.ret, ADD: self.add, CMP: self.cmp, JMP: self.jmp}
+                            CALL: self.call, RET: self.ret, ADD: self.add, CMP: self.cmp, JMP: self.jmp, JEQ: self.jeq, JNE: self.jne}
         self.flag = 0b0000000
 
     def load(self):
@@ -66,10 +66,13 @@ class CPU:
             self.reg[reg_a] = self.reg[reg_a] * self.reg[reg_b]
         elif op == "CMP":
             if self.reg[reg_a] == self.reg[reg_b]:
+                # print('CMP Equal')
                 self.flag = bin(1)
             elif self.reg[reg_a] < self.reg[reg_b]:
+                # print('CMP Less Than')
                 self.flag = bin(1 << 2)
             elif self.reg[reg_a] > self.reg[reg_b]:
+                # print('CMP Greather Than')
                 self.flag = bin(1 << 1)
 
         # elif op == "SUB": etc
@@ -108,6 +111,7 @@ class CPU:
         self.ram[address] = value
 
     def ldi(self):
+        # print('called LDI')
         address = self.ram[self.pc + 1]
         value = self.ram[self.pc + 2]
         self.reg[address] = value
@@ -115,6 +119,7 @@ class CPU:
         self.pc += count + 1
 
     def prn(self):
+        # print('called PRN')
         address = self.ram[self.pc + 1]
         print(self.reg[address])
         count = self.get_arg_count(PRN)
@@ -141,25 +146,27 @@ class CPU:
         self.pc = return_addr
 
     def cmp(self):
-        self.alu('CMP', self.reg[self.pc + 1], self.reg[self.pc + 2])
-        self.pc = self.get_arg_count(CMP)
+        # print('called CMP')
+        self.alu('CMP', self.ram_read(self.pc + 1), self.ram_read(self.pc + 2))
+        count = self.get_arg_count(CMP)
+        self.pc += count + 1
 
     def jmp(self):
-        self.pc = self.reg[self.pc + 1]
+        # print('called jmp')
+        self.pc = self.reg[self.ram_read(self.pc + 1)]
 
     def jeq(self):
-        value = self.flag & 0b00000001
-        if value == 0b00000001:
-            self.pc = self.reg[self.pc + 1]
+        if self.flag == '0b1':
+            self.pc = self.reg[self.ram_read(self.pc+1)]
         else:
-            self.pc = self.get_arg_count(JEQ) + 1
+            self.pc += self.get_arg_count(JEQ) + 1
 
     def jne(self):
-        value = self.flag & 0b00000001
-        if value == 0b00000000:
-            self.pc = self.reg[self.pc + 1]
+        # print('called jne')
+        if self.flag != '0b1':
+            self.pc = self.reg[self.ram_read(self.pc + 1)]
         else:
-            self.pc = self.get_arg_count(JNE) + 1
+            self.pc += self.get_arg_count(JNE) + 1
 
     def push(self):
         self.reg[SP] -= 1
@@ -182,4 +189,5 @@ class CPU:
         run = True
         while run:
             # print(self.ram[self.pc])
+            # self.trace()
             self.instruction[self.ram[self.pc]]()

@@ -1,4 +1,4 @@
-from .cpu import *
+from cpu import *
 
 cpu = CPU()
 
